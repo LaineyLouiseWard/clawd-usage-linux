@@ -1,10 +1,18 @@
 # Clawd Usage for Linux
 
-A small desktop widget that shows how much of your Claude plan limit you've used, with Clawd walking around on top.
+A small desktop widget that shows how much of your Claude plan limit you've used, with Clawd walking around on top. This version adds themes and outfits. In October Clawd walks through a graveyard full of bats, in December through snow, and you can dress him as a chef, wizard, detective or programmer at any time.
 
-This is a Linux port of **[Enhed/clawd-usage-winwidget](https://github.com/Enhed/clawd-usage-winwidget)**, which is Windows-only (PowerShell + WPF). All credit for the idea, the design and the Clawd animations goes to that project. This version is rewritten in Python + Qt so it runs on most Linux distros (Debian, Ubuntu, Mint, Fedora, Arch, openSUSE…) and desktops (GNOME, KDE, XFCE, Cinnamon…).
+![Clawd Usage in four themes](screenshot-themes.png)
 
-![Clawd Usage](screenshot.png)
+## Built on
+
+This widget is built from three MIT-licensed projects, and the ideas and artwork are theirs.
+
+- [Enhed/clawd-usage-winwidget](https://github.com/Enhed/clawd-usage-winwidget): the original Windows widget. The design and Clawd's animations come from here.
+- [Ivan1Rev/clawd-usage-linux](https://github.com/Ivan1Rev/clawd-usage-linux): the Python + Qt port that this repo is forked from. It runs on most Linux distros (Debian, Ubuntu, Mint, Fedora, Arch, openSUSE…) and desktops (GNOME, KDE, XFCE, Cinnamon…).
+- [YoussefAbdelkawy/Pinch](https://github.com/YoussefAbdelkawy/Pinch): the Android home-screen widget. Its themes, scenes, outfits and outfit routines are ported here from Kotlin.
+
+![Clawd Usage, classic look](screenshot.png)
 
 Unofficial fan project, not made by or affiliated with Anthropic.
 
@@ -37,7 +45,7 @@ Not sure? Skip this step: `install.sh` checks for PyQt6 and prints the right com
 **2. Download and install:**
 
 ```sh
-git clone https://github.com/Ivan1Rev/clawd-usage-linux.git
+git clone https://github.com/LaineyLouiseWard/clawd-usage-linux.git
 cd clawd-usage-linux
 sh install.sh
 ```
@@ -58,6 +66,14 @@ To remove: `sh uninstall.sh` (add `--all` to delete settings too).
 - `–` hides it to the tray; `✕` quits.
 - Settings live in `~/.config/clawd-usage/config.json`.
 
+## Themes and outfits
+
+The 11 themes and 31 outfits come from [Pinch](https://github.com/YoussefAbdelkawy/Pinch) (MIT, see [LICENSE-pinch](LICENSE-pinch)). Each theme has its own animated scene, card colour and background pattern, among them Halloween, Christmas, Midnight, Space and Underwater. The chef flips pancakes, the programmer types, the wizard casts spells and the detective investigates.
+
+- Right-click → *Theme*: *Follow the season* (the default) picks Halloween in October, Christmas in December, and so on. *Classic* keeps the live-weather sky.
+- Right-click → *Outfit*: *The theme's own*, *None*, or any outfit.
+- In the settings file, `theme` and `skin` hold your choices, and `showFable`, `showDetailsButton` and `showStamp` hide the Fable row, the ▾ button and the time of the last reading.
+
 ## Notes
 
 - **GNOME:** the tray icon needs the *AppIndicator* extension. Ubuntu has it already; elsewhere install `gnome-shell-extension-appindicator` (Debian, Fedora, Arch) and enable it in the Extensions app.
@@ -66,4 +82,4 @@ To remove: `sh uninstall.sh` (add `--all` to delete settings too).
 
 ## License
 
-MIT, same as the original. See [LICENSE](LICENSE).
+MIT, same as the original. See [LICENSE](LICENSE). The scenes, outfits (`skins/`), patterns (`patterns/`) and their drawing code come from Pinch: see [LICENSE-pinch](LICENSE-pinch).
