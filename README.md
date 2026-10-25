@@ -8,9 +8,9 @@ A small desktop widget that shows how much of your Claude plan limit you've used
 
 This widget is built from three MIT-licensed projects, and the ideas and artwork are theirs.
 
-- [Enhed/clawd-usage-winwidget](https://github.com/Enhed/clawd-usage-winwidget): the original Windows widget. The design and Clawd's animations come from here.
-- [Ivan1Rev/clawd-usage-linux](https://github.com/Ivan1Rev/clawd-usage-linux): the Python + Qt port that this repo is forked from. It runs on most Linux distros (Debian, Ubuntu, Mint, Fedora, Arch, openSUSE…) and desktops (GNOME, KDE, XFCE, Cinnamon…).
-- [YoussefAbdelkawy/Pinch](https://github.com/YoussefAbdelkawy/Pinch): the Android home-screen widget. Its themes, scenes, outfits and outfit routines are ported here from Kotlin.
+- [Enhed/clawd-usage-winwidget](https://github.com/Enhed/clawd-usage-winwidget) is the original Windows widget, where the design and Clawd's animations come from.
+- [Ivan1Rev/clawd-usage-linux](https://github.com/Ivan1Rev/clawd-usage-linux) is the Python + Qt port that this repo is forked from. It runs on most Linux distros (Debian, Ubuntu, Mint, Fedora, Arch, openSUSE…) and desktops (GNOME, KDE, XFCE, Cinnamon…).
+- [YoussefAbdelkawy/Pinch](https://github.com/YoussefAbdelkawy/Pinch) is the Android home-screen widget whose themes, scenes, outfits and outfit routines are ported here from Kotlin.
 
 ![Clawd Usage, classic look](screenshot.png)
 
@@ -70,9 +70,9 @@ To remove: `sh uninstall.sh` (add `--all` to delete settings too).
 
 The 11 themes and 31 outfits come from [Pinch](https://github.com/YoussefAbdelkawy/Pinch) (MIT, see [LICENSE-pinch](LICENSE-pinch)). Each theme has its own animated scene, card colour and background pattern, among them Halloween, Christmas, Midnight, Space and Underwater. The chef flips pancakes, the programmer types, the wizard casts spells and the detective investigates.
 
-- Right-click → *Theme*: *Follow the season* (the default) picks Halloween in October, Christmas in December, and so on. *Classic* keeps the live-weather sky.
-- Right-click → *Outfit*: *The theme's own*, *None*, or any outfit.
-- In the settings file, `theme` and `skin` hold your choices, and `showFable`, `showDetailsButton` and `showStamp` hide the Fable row, the ▾ button and the time of the last reading.
+- Right-click and choose *Theme*. *Follow the season*, the default, picks Halloween in October, Christmas in December, and so on. *Classic* keeps the live-weather sky.
+- Right-click and choose *Outfit* to pick the theme's own outfit, none, or any of the 31.
+- The settings file keeps your choices as `theme` and `skin`. Set `showFable`, `showDetailsButton` or `showStamp` to `false` to hide the Fable row, the ▾ button or the time of the last reading.
 
 ## Notes
 
