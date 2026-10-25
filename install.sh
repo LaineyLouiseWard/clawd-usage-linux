@@ -21,7 +21,13 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! python3 -c 'import PyQt6.QtWidgets' 2>/dev/null; then
+# Use a python3 that has PyQt6: a conda or venv python3 first on PATH often doesn't.
+PY=$(command -v python3)
+if ! "$PY" -c 'import PyQt6.QtWidgets' 2>/dev/null && /usr/bin/python3 -c 'import PyQt6.QtWidgets' 2>/dev/null; then
+    PY=/usr/bin/python3
+fi
+
+if ! "$PY" -c 'import PyQt6.QtWidgets' 2>/dev/null; then
     # Work out the distro family from /etc/os-release (ID, plus ID_LIKE for derivatives).
     ids=""
     if [ -r /etc/os-release ]; then
@@ -50,11 +56,15 @@ command -v claude >/dev/null 2>&1 || echo "Note: 'claude' (Claude Code) is not o
 
 APP="$HOME/.local/share/clawd-usage"
 mkdir -p "$APP" "$HOME/.local/bin" "$HOME/.local/share/applications"
-cp clawd_usage.py mascot.py sky.py codestats.py split.py clawd-usage.png "$APP/"
+cp clawd_usage.py mascot.py sky.py codestats.py split.py scenes.py skins.py themes.py \
+   clawd-usage.png LICENSE-pinch "$APP/"
+mkdir -p "$APP/skins" "$APP/patterns"
+cp skins/*.txt "$APP/skins/"
+cp patterns/*.png "$APP/patterns/"
 
-cat > "$HOME/.local/bin/clawd-usage" <<'EOF'
+cat > "$HOME/.local/bin/clawd-usage" <<EOF
 #!/bin/sh
-exec python3 "$HOME/.local/share/clawd-usage/clawd_usage.py" "$@"
+exec $PY "\$HOME/.local/share/clawd-usage/clawd_usage.py" "\$@"
 EOF
 chmod +x "$HOME/.local/bin/clawd-usage"
 

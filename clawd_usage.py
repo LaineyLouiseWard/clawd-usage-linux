@@ -25,7 +25,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import (QEasingCurve, QPoint, QPointF, QProcess, QRectF, QSize, Qt, QTimer, QUrl,
                           QVariantAnimation)
-from PyQt6.QtGui import (QAction, QActionGroup, QColor, QCursor, QDesktopServices, QFont,
+from PyQt6.QtGui import (QAction, QActionGroup, QBrush, QColor, QCursor, QDesktopServices, QFont,
                          QIcon, QPainter, QPainterPath, QPixmap)
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import (QApplication, QFrame, QGridLayout, QHBoxLayout, QLabel, QMenu,
@@ -34,8 +34,11 @@ from PyQt6.QtWidgets import (QApplication, QFrame, QGridLayout, QHBoxLayout, QLa
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import codestats as CS  # noqa: E402
 import mascot as M  # noqa: E402
+import scenes as SC  # noqa: E402
+import skins as SKN  # noqa: E402
 import sky as SK  # noqa: E402
 import split as SP  # noqa: E402
+import themes as TH  # noqa: E402
 
 APP_VERSION = '1.0.0'
 APP_ID = 'clawd-usage'
@@ -69,6 +72,11 @@ DEFAULTS = {
     'mainSource': 'all',           # big number: all / code / cowork / chat (the last three are estimates)
     'codeIntervalSeconds': 60,     # how often to re-read Claude Code's and Cowork's local logs
     'showAccount': True,
+    'showFable': True,             # the weekly Fable row (hidden anyway when /usage doesn't report it)
+    'showDetailsButton': True,     # the ▾ button that opens Details
+    'showStamp': True,             # time of the last reading, bottom right
+    'theme': 'auto',               # auto (follows the season) or a theme id from themes.py
+    'skin': 'auto',                # Clawd's outfit: auto (the theme's), classic, or a file name in skins/
     'startHidden': False,
     'hoverOpen': True,             # card stays a slim bar until the mouse is on it (or it's clicked)
     'closeDelaySeconds': 2,        # how long it stays open after the mouse leaves
@@ -435,10 +443,25 @@ class MascotArea(QWidget):
         self.m = mascot
         self.s = s
         self.on_click = on_click
-        self.setFixedHeight(round(self.AREA_H * s))
+        self.skin = SKN.CLASSIC
+        self.scene = None          # a scene from scenes.py behind Clawd, or None
+        self.scene_img = None
+        self.area_h = self.AREA_H
+        self.setFixedHeight(round(self.area_h * s))
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def set_scene(self, scene):
+        # A scene is drawn in Clawd's own pixels, so it needs its full height.
+        self.scene = scene
+        self.scene_img = None
+        self.area_h = SC.H * M.PY if scene else self.AREA_H
+        self.setFixedHeight(round(self.area_h * self.s))
+
+    def ground(self):
+        """How far Clawd stands above the bottom edge: on the scene's ground."""
+        return SC.GROUND * M.PY if self.scene else 0.0
 
     def area_w(self):
         return self.width() / self.s
@@ -454,7 +477,7 @@ class MascotArea(QWidget):
         r = self.m.r
         if r:
             x = e.position().x() / self.s
-            bottom = self.AREA_H - (r['lift'] - M.SINK)
+            bottom = self.area_h - self.ground() - (r['lift'] - M.SINK)
             if r['x'] - 4 <= x <= r['x'] + M.MASCOT_W + 4 and e.position().y() / self.s >= bottom - M.MASCOT_H - 4:
                 self.on_click()
                 return
@@ -465,11 +488,18 @@ class MascotArea(QWidget):
         r = self.m.r
         if not r:
             return
-        H = self.AREA_H
+        H = self.area_h
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         p.scale(self.s, self.s)
         p.setPen(Qt.PenStyle.NoPen)
+        if self.scene_img is not None:
+            clip = QPainterPath()
+            clip.addRoundedRect(QRectF(0, 0, self.area_w(), H), 6, 6)
+            p.setClipPath(clip)
+            iw = self.scene_img.width()
+            p.drawImage(QRectF(0, 0, iw * M.PX, SC.H * M.PY), self.scene_img)
+            p.translate(0, -self.ground())
 
         def rects(lst, color, ox, oy, opacity=1.0):
             if not lst:
@@ -485,10 +515,32 @@ class MascotArea(QWidget):
         top = H - (r['lift'] - M.SINK) - M.MASCOT_H
         ox = r['x']
         g = r['geo']
-        rects(g['body'], M.BODY, ox, top)
-        rects(g['eyes'], M.EYE, ox, top)
+        skin = self.skin
+        rects(g['body'], skin.body, ox, top)
+        rects(g['eyes'], skin.eyes, ox, top)
         rects(g['fx'], M.FX, ox, top)
-        rects(g['sand'], M.SAND, ox, top)
+        rects(g['sand'], SC.sand(self.scene) if self.scene else M.SAND, ox, top)
+        f = r['f']
+        if not f['flip']:
+            dx = 2 * int(f['x'])
+            dy = 4 * int(f['off']) + int(f['dig'])
+            lim = M.GH - 2 if f['dig'] > 0 else M.GH
+            # Outfit: what is above his head stays on while he turns; on his back it all comes off.
+            for color, pts in skin.layers:
+                keep = []
+                for x, y in pts:
+                    xx, yy = x + dx, y + dy
+                    if (y >= 0 and f['facing']) or xx < 0 or xx >= M.GW or yy >= lim:
+                        continue
+                    if (dy < 0) if y < 0 else (yy < 0):
+                        continue
+                    keep.append((xx * M.PX, yy * M.PY, M.PX, M.PY))
+                rects(keep, color, ox, top)
+            if not f['dig'] and not f['facing']:
+                rest = round(r['lift'] / M.PY)
+                for x, y, argb in SKN.props(skin.id, f, self.m.tick, dx, dy, rest):
+                    p.setBrush(QColor.fromRgba(argb))
+                    p.drawRect(QRectF(ox + x * M.PX, top + y * M.PY, M.PX + 0.05, M.PY + 0.05))
         if r['sweat']:
             sw = r['sweat']
             rects([(sw['left'], sw['top'], 3, 4.5)], '#7DD3FC', ox, top, sw['opacity'])
@@ -553,9 +605,10 @@ class SkyRow(QWidget):
     def __init__(self, sky, s, cfg):
         super().__init__()
         self.sky, self.s, self.cfg = sky, s, cfg
+        self.themed = False        # a theme's scene replaces the weather sky
 
     def paintEvent(self, e):
-        if not self.cfg['showSky']:
+        if not self.cfg['showSky'] or self.themed:
             return
         p = QPainter(self)
         self.sky.paint(p, self.width() / self.s, self.height() / self.s, self.s)
@@ -634,10 +687,25 @@ class Clip(QWidget):
 
 
 class Card(QFrame):
+    PATTERN_DIR = Path(__file__).resolve().parent / 'patterns'
+
     def __init__(self, s):
         super().__init__()
         self.s = s
+        self.bg = COL['card']
+        self.pattern = None
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
+
+    def set_theme(self, theme):
+        self.bg = theme.bg
+        self.pattern = None
+        pm = QPixmap(str(self.PATTERN_DIR / f'{theme.pattern}.png')) if theme.pattern else QPixmap()
+        if not pm.isNull():
+            # Pinch's tiles use 6 px per pattern pixel; at the default scale 1.35 this gives 2.
+            k = self.s / 4.05
+            self.pattern = pm.scaled(max(1, round(pm.width() * k)), max(1, round(pm.height() * k)),
+                                     transformMode=Qt.TransformationMode.FastTransformation)
+        self.update()
 
     def paintEvent(self, e):
         p = QPainter(self)
@@ -646,7 +714,9 @@ class Card(QFrame):
         path = QPainterPath()
         rad = 10 * self.s
         path.addRoundedRect(r, rad, rad)
-        p.fillPath(path, qcolor(COL['card']))
+        p.fillPath(path, qcolor(self.bg))
+        if self.pattern:
+            p.fillPath(path, QBrush(self.pattern))
         p.setPen(qcolor(COL['border']))
         p.drawPath(path)
 
@@ -673,6 +743,9 @@ class Widget(QWidget):
         self.m.walk_speed = float(cfg['walkSpeed'])
         self.weather = SK.Weather()
         self.sky = SK.Sky(self.weather, cfg)
+        self.skins = SKN.load_all()
+        self.scene_cache = SC.SceneCache()
+        self.theme_key = None
         self.code = CS.CodeStats()
         self.cowork = CS.CodeStats(CS.COWORK)
         self.split = SP.Split()
@@ -705,6 +778,7 @@ class Widget(QWidget):
         hdr.addWidget(self.hearts)
         hdr.addSpacing(round(3 * s))
         self.btn_toggle = self.header_button('▾', 11, 'Details', self.toggle_details)
+        self.btn_toggle.setVisible(bool(cfg['showDetailsButton']))
         self.btn_hide = self.header_button('–', 13, 'Hide to tray', self.hide_to_tray)
         self.btn_exit = self.header_button('✕', 11, 'Quit', self.quit)
         for b in (self.btn_toggle, self.btn_hide, self.btn_exit):
@@ -858,6 +932,8 @@ class Widget(QWidget):
         self.line_stamp = label('', 9, COL['faint'], s)
         foot.addWidget(self.line_account, 1)
         foot.addWidget(self.line_stamp)
+        self.line_account.setVisible(bool(cfg['showAccount']))
+        self.line_stamp.setVisible(bool(cfg['showStamp']))
         v.addLayout(foot)
         self.clip = Clip(self.body)
         card_v.addWidget(self.clip)
@@ -879,6 +955,7 @@ class Widget(QWidget):
         self.set_details(bool(cfg['expanded']), save=False)
         self.area.setVisible(bool(cfg['showMascot']))
         self.hearts.setVisible(bool(cfg['showMascot']))
+        self.apply_theme()
 
         # probes
         self.p_usage = Probe(self.claude, ['-p', '/usage', '--output-format', 'text',
@@ -1057,6 +1134,20 @@ class Widget(QWidget):
         a.setCheckable(True)
         a.setChecked(bool(self.cfg['showSky']))
         a.triggered.connect(self.toggle_sky)
+        th = menu.addMenu('Theme')
+        for tid, name in [('auto', f'Follow the season (now {TH.resolve("auto").name})')] + \
+                [(t.id, t.name) for t in TH.ALL]:
+            a = th.addAction(name)
+            a.setCheckable(True)
+            a.setChecked(self.cfg['theme'] == tid)
+            a.triggered.connect(lambda _=False, x=tid: self.set_look('theme', x))
+        sk = menu.addMenu('Outfit')
+        outfits = sorted(((k, v.name) for k, v in self.skins.items() if k != 'classic'), key=lambda kv: kv[1].lower())
+        for sid, name in [('auto', "The theme's own"), ('classic', 'None')] + outfits:
+            a = sk.addAction(name)
+            a.setCheckable(True)
+            a.setChecked(self.cfg['skin'] == sid)
+            a.triggered.connect(lambda _=False, x=sid: self.set_look('skin', x))
         anim = menu.addMenu('Play animation')
         for act in M.DEMO_ACTS:
             anim.addAction(act).triggered.connect(lambda _=False, a=act: self.m.start_act(a))
@@ -1095,6 +1186,27 @@ class Widget(QWidget):
         self.weather.last_try = 0
         self.sky_row.update()
         self.update_data()
+
+    def set_look(self, key, value):
+        self.cfg[key] = value
+        save_config({key: value})
+        self.apply_theme()
+
+    def apply_theme(self):
+        """Theme and outfit from the config; 'auto' theme follows the calendar."""
+        theme = TH.resolve(self.cfg['theme'])
+        sid = theme.skin if self.cfg['skin'] == 'auto' else self.cfg['skin']
+        skin = self.skins.get(sid, SKN.CLASSIC)
+        if (theme.id, skin.id) == self.theme_key:
+            return
+        self.theme_key = (theme.id, skin.id)
+        self.card.set_theme(theme)
+        self.area.skin = skin
+        self.m.skin_id = skin.id
+        self.area.set_scene(theme.scene)
+        self.sky_row.themed = theme.scene is not None
+        self.sky_row.update()
+        self.fit_wrapped()
 
     def toggle_topmost(self):
         self.cfg['topmost'] = not self.cfg['topmost']
@@ -1224,6 +1336,7 @@ class Widget(QWidget):
     def update_data(self):
         now = time.time()
         cfg = self.cfg
+        self.apply_theme()
         for p in (self.p_usage, self.p_auth, self.p_ver):
             p.check_timeout()
         # Counted from the last attempt, not success: don't hammer a failing /usage.
@@ -1238,7 +1351,7 @@ class Widget(QWidget):
             self.h_status.start()
         self.h_status.collect()
         self.h_latest.collect()
-        if cfg['showSky'] and cfg['showMascot'] and self.weather.due(cfg):
+        if cfg['showSky'] and cfg['showMascot'] and not self.sky_row.themed and self.weather.due(cfg):
             self.weather.start(cfg)
         if cfg['mainSource'] != 'all':
             for c in (self.code, self.cowork):
@@ -1320,6 +1433,8 @@ class Widget(QWidget):
         for key, box, line, bar in (('week', self.week_box, self.line_week, self.bar_week),
                                     ('fable', self.fable_box, self.line_fable, self.bar_fable)):
             val = u.get(key) if u else None
+            if key == 'fable' and not cfg['showFable']:
+                val = None
             if val is None:
                 # The Fable line can be missing: hide the row instead of showing 0.
                 box.setVisible(key == 'week')
@@ -1457,7 +1572,12 @@ class Widget(QWidget):
         r = self.m.step(self.area.area_w(), self.area.mouse_x(), hovered)
         if self.mascot_timer.interval() != r['interval']:
             self.mascot_timer.setInterval(r['interval'])
-        if self.cfg['showSky']:
+        if self.area.scene:
+            w_px = max(1, math.ceil(self.area.area_w() / M.PX))
+            t = int(time.monotonic() / SC.FRAME_S) % SC.LOOP
+            self.area.scene_img = self.scene_cache.frame(self.area.scene, w_px, datetime.now().hour, t)
+            self.area.update()
+        elif self.cfg['showSky']:
             self.sky.step(self.sky_row.width() / self.s, self.sky_row.height() / self.s)
             self.sky_row.update()
         else:

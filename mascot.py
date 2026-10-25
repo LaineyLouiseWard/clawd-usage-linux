@@ -11,6 +11,8 @@ import math
 import random
 import time
 
+from skins import ROUTINES, routine
+
 COLS, ROWS = 9, 3
 PX, PY = 2.0, 2.2
 GW, GH = 2 * COLS, 4 * ROWS          # pixel grid 18 x 12
@@ -35,7 +37,8 @@ ARMS = {
     'right': {'r1L': ' ▐', 'r1R': '▄', 'r2L': '▝▜', 'r2R': '█▘'},
     'left':  {'r1L': '▗▟', 'r1R': '',  'r2L': ' ▜', 'r2R': '█▀'},
 }
-FEET = {'both': ' ▝▝   ▝▝ ', 'left': ' ▝▝      ', 'right': '      ▝▝ '}
+FEET = {'both': ' ▝▝   ▝▝ ', 'left': ' ▝▝      ', 'right': '      ▝▝ ',
+        'tucked': '         '}   # sitting: legs folded under him
 
 FACING = {
     'right-12': [(' ▐█▜██▛█ ', 2, 8), ('▝▜██████▀', 2, 7), (' ▝▝   ▝▝ ', 0, 0)],
@@ -353,6 +356,8 @@ class Mascot:
         self.last_pct = None
         self.buried = False
         self.walk_speed = 1.0     # multiplier, from config walkSpeed
+        self.skin_id = 'classic'  # an outfit in skins.ROUTINES plays its own routine when awake
+        self.rt, self.rt_i, self.rt_key = None, 0, None
         self.confetti = [{'x': 0.0, 'y': 0.0, 'v': 0.0, 'd': 0.0,
                           'color': CONFETTI_COLORS[i % len(CONFETTI_COLORS)]} for i in range(12)]
         self.r = {}
@@ -582,7 +587,7 @@ class Mascot:
 
         f = {'feet': 'both', 'look': self.look, 'eyes': 'open', 'arms': 'down', 'flip': False,
              'lift': 0.0, 'off': 0, 'x': 0, 'facing': '', 'poof': '', 'shadow': '',
-             'soul': 0.0, 'soulT': 0, 'dig': 0, 'spray': 0}
+             'soul': 0.0, 'soulT': 0, 'dig': 0, 'spray': 0, 'prop': 0}
         self.cur = mood
         bubble, zzz, can_blink, dust = '', False, True, False
 
@@ -617,6 +622,8 @@ class Mascot:
                 k = p / 7.0
                 f['lift'] = 12 * k * (1 - k)
                 f['arms'] = 'right'
+        elif self.skin_id in ROUTINES and mood in ('idle', 'work'):
+            self.step_routine(f, area_w)
         else:
             if mood == 'work':
                 speed = 1.6 * tier['speed'] * self.walk_speed
@@ -701,6 +708,7 @@ class Mascot:
             'off': f['off'], 'look': f['look'], 'bubble': bubble,
             'interval': FRAME_MS if (self.act and self.act in SEQS) else STEP_MS,
             'zzz': None, 'sweat': None, 'dust': [], 'confetti': [], 'love': None, 'soul': None,
+            'f': f,
         }
         if zzz:
             p = (self.tick % 30) / 30.0
@@ -747,6 +755,22 @@ class Mascot:
                          'left': self.x + 9.5 * PX, 'lift': f['lift']}
         self.r = r
         return r
+
+    def step_routine(self, f, area_w):
+        # Keep room on his right for what he holds (pan, laptop, lens).
+        max_x = max(0, int((area_w - (GW + 9) * PX) // PX))
+        key = (self.skin_id, self.crit, max_x)
+        if self.rt is None or self.rt_key != key or self.rt_i >= len(self.rt):
+            start = max(0, min(max_x, round(self.x / PX)))
+            self.rt, self.rt_i, self.rt_key = routine(self.skin_id, self.crit, start, max_x), 0, key
+        gx, rf = self.rt[self.rt_i]
+        self.rt_i += 1
+        self.x = gx * PX
+        self.target = None
+        self.look = rf['look']
+        for k in ('eyes', 'arms', 'feet', 'look', 'off', 'prop'):
+            f[k] = rf[k]
+        f['lift'] = rf['lift'] * PY
 
     def step_hearts(self):
         halves = self.get_halves()
