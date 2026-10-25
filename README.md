@@ -4,6 +4,8 @@ A small desktop widget that shows how much of your Claude plan limit you've used
 
 ![Clawd Usage in four themes](screenshot-themes.png)
 
+The same Clawd and themes also live in the VS Code sidebar: [clawd-usage-vscode](https://github.com/LaineyLouiseWard/clawd-usage-vscode).
+
 ## Built on
 
 This widget is built from three MIT-licensed projects, and the ideas and artwork are theirs.
