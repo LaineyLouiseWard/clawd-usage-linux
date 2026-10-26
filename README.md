@@ -4,7 +4,7 @@ A small desktop widget that shows how much of your Claude plan limit you've used
 
 ![Clawd Usage in four themes](screenshot-themes.png)
 
-The same Clawd and themes also live in the VS Code sidebar: [clawd-usage-vscode](https://github.com/LaineyLouiseWard/clawd-usage-vscode).
+The same Clawd and themes also live in the VS Code sidebar: [clawd-usage-vscode](https://github.com/LaineyLouiseWard/clawd-usage-vscode). Its companion [chatgpt-usage-vscode](https://github.com/LaineyLouiseWard/chatgpt-usage-vscode) shows a ChatGPT plan's limits beside it.
 
 ## Built on
 
